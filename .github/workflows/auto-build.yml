@@ -1,0 +1,92 @@
+name: Release
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The corresponding tailscale version"
+        required: false
+        default: "latest"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine the version
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="latest"
+          # check if the event is a release
+          if [ "${{ github.event_name }}" == "release" ]; then
+            version="${{ github.event.release.tag_name }}"
+          fi
+          # check if the event is a workflow_dispatch
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            version="${{ github.event.inputs.version }}"
+          fi
+          
+          # get the version info from the tag
+          if [ "${version}" == "latest" ]; then
+            version=$(gh api /repos/tailscale/tailscale/releases/latest --jq '.tag_name')
+          fi
+
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+        with:
+          repository: tailscale/tailscale
+          ref: ${{ steps.version.outputs.version }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Build the release
+        run: |
+          # download the dependencies
+          go mod download
+          # build the release
+          ARCHES="amd64"
+
+          mkdir -p /tmp/derper
+
+          for arch in "${ARCHES}"; do
+            echo "Building for ${arch}"
+            GOARCH="${arch}" go build -o "/tmp/derper/derper-linux-${arch}" -trimpath -ldflags "-s -w -buildid=" ./cmd/derper/
+          done
+
+      - name: Create a release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.version }}" --title "${{ steps.version.outputs.version }}" \
+            --notes "${{ steps.version.outputs.version }}" --target main --repo ${{ github.repository }}
+
+      - name: Upload assets
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: derper
+          path: /tmp/derper
+
+      - name: Upload releases
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.version.outputs.version }}" --repo ${{ github.repository }} /tmp/derper/*
+
+      - name: Delete the release if failed
+        if: failure() && github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete "${{ steps.version.outputs.version }}" --repo ${{ github.repository }}
