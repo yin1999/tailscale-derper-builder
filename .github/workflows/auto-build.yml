@@ -37,6 +37,7 @@ jobs:
           fi
 
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${version}"
 
       - name: Checkout the repository
         uses: actions/checkout@v4
