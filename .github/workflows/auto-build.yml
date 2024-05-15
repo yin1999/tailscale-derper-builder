@@ -70,7 +70,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ steps.version.outputs.version }}" --title "${{ steps.version.outputs.version }}" \
-            --notes "${{ steps.version.outputs.version }}" --target main --repo ${{ github.repository }}
+            --notes "[${{ steps.version.outputs.version }}](https://github.com/tailscale/tailscale/releases/tag/${{ steps.version.outputs.version }})" --target main --repo ${{ github.repository }}
 
       - name: Upload assets
         if: github.event_name == 'pull_request'
