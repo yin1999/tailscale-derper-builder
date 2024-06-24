@@ -62,7 +62,16 @@ jobs:
 
           for arch in "${ARCHES}"; do
             echo "Building for ${arch}"
-            GOARCH="${arch}" go build -o "/tmp/derper/derper-linux-${arch}" -trimpath -ldflags "-s -w -buildid=" ./cmd/derper/
+            GOARCH="${arch}" go build -o "/tmp/derper/derper" -trimpath -ldflags "-s -w -buildid=" ./cmd/derper/
+
+            # calculate the checksum
+            sha256sum "/tmp/derper/derper" | cut -d ' ' -f 1 > "/tmp/derper/derper-linux-${arch}.sha256"
+
+            # compress the binary
+            zip -9 -j "/tmp/derper/derper-linux-${arch}.zip" "/tmp/derper/derper"
+
+            # remove the binary
+            rm -f "/tmp/derper/derper"
           done
 
       - name: Create a release
