@@ -40,7 +40,7 @@ jobs:
           echo "Version: ${version}"
 
       - name: Checkout the repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: tailscale/tailscale
           ref: ${{ steps.version.outputs.version }}
