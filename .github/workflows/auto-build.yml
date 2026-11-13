@@ -56,11 +56,11 @@ jobs:
           # download the dependencies
           go mod download
           # build the release
-          ARCHES="amd64 arm64"
+          ARCHES=(amd64 arm64)
 
           mkdir -p /tmp/derper
 
-          for arch in "${ARCHES}"; do
+          for arch in "${ARCHES[@]}"; do
             echo "Building for ${arch}"
             GOARCH="${arch}" go build -o "/tmp/derper/derper" -trimpath -ldflags "-s -w -buildid=" ./cmd/derper/
 
